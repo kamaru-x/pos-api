@@ -1,14 +1,16 @@
 from django.db.models import Q
 from django_filters import rest_framework as filters
+
 from activity.models import Todo, Note, Journal
 
+from core.choices import TodoPriorityChoices, JournalMoodChoices
 
 # --------------------------------------------------
 # TODOO FILTER
 # --------------------------------------------------
 class TodoFilter(filters.FilterSet):
     search = filters.CharFilter(method='search_filter')
-    priority = filters.ChoiceFilter(choices=[("low", "Low"), ("medium", "Medium"), ("high", "High")])
+    priority = filters.ChoiceFilter(choices=TodoPriorityChoices.choices)
     is_completed = filters.BooleanFilter()
     due_date = filters.DateFilter()
     due_date_from = filters.DateFilter(field_name='due_date', lookup_expr='gte')
@@ -48,10 +50,7 @@ class NoteFilter(filters.FilterSet):
 # --------------------------------------------------
 class JournalFilter(filters.FilterSet):
     search = filters.CharFilter(method='search_filter')
-    mood = filters.ChoiceFilter(choices=[
-        ("great", "Great"), ("good", "Good"), ("neutral", "Neutral"),
-        ("bad", "Bad"), ("terrible", "Terrible"),
-    ])
+    mood = filters.ChoiceFilter(choices=JournalMoodChoices.choices)
     date = filters.DateFilter()
     date_from = filters.DateFilter(field_name='date', lookup_expr='gte')
     date_to = filters.DateFilter(field_name='date', lookup_expr='lte')
