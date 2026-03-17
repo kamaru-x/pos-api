@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/', include([
         path('auth/', include('api.auth.urls', namespace='api_auth')),
         path('activity/', include('api.activity.urls', namespace='api_activity')),
+        path('finance/', include('api.finance.urls', namespace='api_finance')),
 
         path('choices/', include('api.choices.urls', namespace='api_choices')),
     ]))
