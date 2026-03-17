@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
-from activity.models import Todo, Note, Journal
+from activity.models import Todo, Note, Journal, Task, DailyTask
 
 from core.choices import TodoPriorityChoices, JournalMoodChoices
 
@@ -63,4 +63,40 @@ class JournalFilter(filters.FilterSet):
         return queryset.filter(
             Q(title__icontains=value) |
             Q(content__icontains=value)
+        )
+    
+
+# --------------------------------------------------
+# TASK FILTER
+# --------------------------------------------------
+class TaskFilter(filters.FilterSet):
+    search = filters.CharFilter(method='search_filter')
+
+    class Meta:
+        model = Task
+        fields = ['title']
+
+    def search_filter(self, queryset, name, value):
+        return queryset.filter(
+            Q(title__icontains=value)
+        )
+
+
+# --------------------------------------------------
+# DAILY TASK FILTER
+# --------------------------------------------------
+class DailyTaskFilter(filters.FilterSet):
+    search       = filters.CharFilter(method='search_filter')
+    is_completed = filters.BooleanFilter()
+    date         = filters.DateFilter()
+    date_from    = filters.DateFilter(field_name='date', lookup_expr='gte')
+    date_to      = filters.DateFilter(field_name='date', lookup_expr='lte')
+
+    class Meta:
+        model = DailyTask
+        fields = ['is_completed', 'date']
+
+    def search_filter(self, queryset, name, value):
+        return queryset.filter(
+            Q(task__title__icontains=value)
         )

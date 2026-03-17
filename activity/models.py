@@ -76,3 +76,47 @@ class Journal(BaseModel):
         request = request.thread_local.current_request
         save_data(self, request, self.title)
         super(Journal, self).save(*args, **kwargs)
+
+
+# --------------------------------------------------
+# TASK
+# --------------------------------------------------
+class Task(BaseModel):
+    title = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f"{self.title}"
+
+    class Meta:
+        verbose_name = _("Task")
+        verbose_name_plural = _("Task")
+        ordering = ("-date_added",)
+
+    def save(self, request=None, *args, **kwargs):
+        request = RequestMiddleware(get_response=None)
+        request = request.thread_local.current_request
+        save_data(self, request, self.title)
+        super(Task, self).save(*args, **kwargs)
+
+
+# --------------------------------------------------
+# DAILY TASK
+# --------------------------------------------------
+class DailyTask(BaseModel):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    date = models.DateField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.task.title} - {self.date}"
+
+    class Meta:
+        verbose_name = _("DailyTask")
+        verbose_name_plural = _("DailyTask")
+        ordering = ("-date",)
+
+    def save(self, request=None, *args, **kwargs):
+        request = RequestMiddleware(get_response=None)
+        request = request.thread_local.current_request
+        save_data(self, request, self.task.title)
+        super(DailyTask, self).save(*args, **kwargs)

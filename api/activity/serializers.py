@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from core.mixins import RepMixin
-from activity.models import Todo, Note, Journal
+from activity.models import Todo, Note, Journal, Task, DailyTask
 
 
 # --------------------------------------------------
@@ -39,4 +39,30 @@ class JournalSerializer(RepMixin, serializers.ModelSerializer):
         fields = [
             'id', 'slug', 'title', 'content',
             'date', 'mood', 'date_added', 'date_updated'
+        ]
+
+
+# --------------------------------------------------
+# TASK SERIALIZER
+# --------------------------------------------------
+class TaskSerializer(RepMixin, serializers.ModelSerializer):
+
+    class Meta:
+        model = Task
+        fields = [
+            'id', 'slug', 'title'
+        ]
+
+
+# --------------------------------------------------
+# DAILY TASK SERIALIZER
+# --------------------------------------------------
+class DailyTaskSerializer(RepMixin, serializers.ModelSerializer):
+    task    = TaskSerializer(read_only=True)
+    task_id = serializers.PrimaryKeyRelatedField(queryset=Task.objects.filter(is_deleted=False), source="task", write_only=True)
+
+    class Meta:
+        model = DailyTask
+        fields = [
+            'id', 'slug', 'date', 'task', 'task_id', 'is_completed', 'date_added', 'date_updated'
         ]

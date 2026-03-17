@@ -1,12 +1,14 @@
+from datetime import datetime
+
 from rest_framework import generics, status
 from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from activity.models import Todo, Note, Journal
-from api.activity.serializers import TodoSerializer, NoteSerializer, JournalSerializer
-from api.activity.filters import TodoFilter, NoteFilter, JournalFilter
+from activity.models import Todo, Note, Journal, Task, DailyTask
+from api.activity.serializers import TodoSerializer, NoteSerializer, JournalSerializer, TaskSerializer, DailyTaskSerializer
+from api.activity.filters import TodoFilter, NoteFilter, JournalFilter, TaskFilter, DailyTaskFilter
 
-from core.utils import api_response
+from core.utils import api_response, ensure_daily_tasks_created
 
 
 # --------------------------------------------------
@@ -271,4 +273,204 @@ class JournalDetailView(generics.RetrieveUpdateDestroyAPIView):
         return api_response(
             message="Journal deleted successfully",
             status=status.HTTP_204_NO_CONTENT
+        )
+    
+
+# --------------------------------------------------
+# TASK LIST & CREATE
+# --------------------------------------------------
+class TaskListView(generics.ListCreateAPIView):
+    queryset = Task.active_objects.all()
+    serializer_class = TaskSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_class = TaskFilter
+    ordering_fields = ["title", "date_added"]
+    ordering = ["-auto_id"]
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        data = self.get_serializer(queryset, many=True).data
+
+        stats = {
+            "total": Task.active_objects.count(),
+        }
+
+        return api_response(
+            message="Tasks retrieved successfully",
+            data={"tasks": data, "stats": stats},
+            status=status.HTTP_200_OK
+        )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return api_response(
+                message="Task created successfully",
+                data=serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+        else:
+            return api_response(
+                message="Failed to create task",
+                status=status.HTTP_400_BAD_REQUEST,
+                serializer=serializer
+            )
+
+
+# --------------------------------------------------
+# TASK RETRIEVE, UPDATE & DELETE
+# --------------------------------------------------
+class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Task.active_objects.all()
+    serializer_class = TaskSerializer
+    lookup_field = "slug"
+
+    def retrieve(self, request, *args, **kwargs):
+        return api_response(
+            message="Task retrieved successfully",
+            data=self.get_serializer(self.get_object()).data,
+            status=status.HTTP_200_OK
+        )
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            self.get_object(),
+            data=request.data,
+            partial=kwargs.get("partial", False)
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return api_response(
+                message="Task updated successfully",
+                data=serializer.data,
+                status=status.HTTP_200_OK
+            )
+        else:
+            return api_response(
+                message="Failed to update task",
+                status=status.HTTP_400_BAD_REQUEST,
+                serializer=serializer
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        self.get_object().delete()
+        return api_response(
+            message="Task deleted successfully",
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+# --------------------------------------------------
+# DAILY TASK LIST & CREATE
+# --------------------------------------------------
+class DailyTaskListView(generics.ListCreateAPIView):
+    queryset = DailyTask.active_objects.all()
+    serializer_class = DailyTaskSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_class = DailyTaskFilter
+    ordering_fields = ["date", "is_completed", "date_added"]
+    ordering = ["-auto_id"]
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        data = self.get_serializer(queryset, many=True).data
+
+        stats = {
+            "total":     DailyTask.active_objects.count(),
+            "completed": DailyTask.active_objects.filter(is_completed=True).count(),
+            "pending":   DailyTask.active_objects.filter(is_completed=False).count(),
+        }
+
+        return api_response(
+            message="Daily tasks retrieved successfully",
+            data={"daily_tasks": data, "stats": stats},
+            status=status.HTTP_200_OK
+        )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return api_response(
+                message="Daily task created successfully",
+                data=serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+        else:
+            return api_response(
+                message="Failed to create daily task",
+                status=status.HTTP_400_BAD_REQUEST,
+                serializer=serializer
+            )
+
+
+# --------------------------------------------------
+# DAILY TASK RETRIEVE, UPDATE & DELETE
+# --------------------------------------------------
+class DailyTaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = DailyTask.active_objects.all()
+    serializer_class = DailyTaskSerializer
+    lookup_field = "slug"
+
+    def retrieve(self, request, *args, **kwargs):
+        return api_response(
+            message="Daily task retrieved successfully",
+            data=self.get_serializer(self.get_object()).data,
+            status=status.HTTP_200_OK
+        )
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            self.get_object(),
+            data=request.data,
+            partial=kwargs.get("partial", False)
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return api_response(
+                message="Daily task updated successfully",
+                data=serializer.data,
+                status=status.HTTP_200_OK
+            )
+        else:
+            return api_response(
+                message="Failed to update daily task",
+                status=status.HTTP_400_BAD_REQUEST,
+                serializer=serializer
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        self.get_object().delete()
+        return api_response(
+            message="Daily task deleted successfully",
+            status=status.HTTP_204_NO_CONTENT
+        )
+    
+
+# --------------------------------------------------
+# TODAY'S DAILY TASKS
+# --------------------------------------------------
+class TodayDailyTaskListView(generics.ListAPIView):
+    serializer_class = DailyTaskSerializer
+
+    def get_queryset(self):
+        ensure_daily_tasks_created()
+        return DailyTask.active_objects.filter(date=datetime.today())
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        data = self.get_serializer(queryset, many=True).data
+
+        today = datetime.today()
+        stats = {
+            "total":     DailyTask.active_objects.filter(date=today).count(),
+            "completed": DailyTask.active_objects.filter(date=today, is_completed=True).count(),
+            "pending":   DailyTask.active_objects.filter(date=today, is_completed=False).count(),
+        }
+
+        return api_response(
+            message="Today's tasks retrieved successfully",
+            data={"daily_tasks": data, "stats": stats},
+            status=status.HTTP_200_OK
         )

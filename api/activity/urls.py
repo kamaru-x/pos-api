@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from api.activity import views
 
 app_name = 'api_activity'
 
@@ -21,4 +21,17 @@ urlpatterns = [
     # --------------------------------------------------
     path('journals/', views.JournalListView.as_view(), name='journal-list'),
     path('journals/<slug:slug>/', views.JournalDetailView.as_view(), name='journal-detail'),
+
+    # --------------------------------------------------
+    # TASK
+    # --------------------------------------------------
+    path('tasks/', views.TaskListView.as_view(), name='task-list'),
+    path('tasks/<slug:slug>/', views.TaskDetailView.as_view(), name='task-detail'),
+
+    # --------------------------------------------------
+    # DAILY TASK
+    # --------------------------------------------------
+    path('daily-tasks/', views.DailyTaskListView.as_view(), name='daily-task-list'),
+    path('daily-tasks/today/',       views.TodayDailyTaskListView.as_view(), name='daily-task-today'),
+    path('daily-tasks/<slug:slug>/', views.DailyTaskDetailView.as_view(), name='daily-task-detail'),
 ]

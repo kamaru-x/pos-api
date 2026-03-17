@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Todo, Note, Journal
+from activity.models import Todo, Note, Journal, Task, DailyTask
 
 
 # --------------------------------------------------
@@ -72,6 +72,58 @@ class JournalAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Journal Info", {
             "fields": ("title", "content", "date", "mood")
+        }),
+        ("Metadata", {
+            "fields": ("id", "auto_id", "slug", "is_deleted"),
+            "classes": ("collapse",)
+        }),
+        ("Timestamps & Users", {
+            "fields": ("creator", "updater", "date_added", "date_updated"),
+            "classes": ("collapse",)
+        }),
+    )
+
+
+# --------------------------------------------------
+# TASK
+# --------------------------------------------------
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ("title", "is_deleted", "creator", "date_added", "date_updated")
+    list_filter = ("is_deleted",)
+    search_fields = ("title",)
+    ordering = ("-auto_id",)
+    readonly_fields = ("id", "auto_id", "slug", "creator", "updater", "date_added", "date_updated", "is_deleted")
+    fieldsets = (
+        ("Task Info", {
+            "fields": ("title",)
+        }),
+        ("Metadata", {
+            "fields": ("id", "auto_id", "slug", "is_deleted"),
+            "classes": ("collapse",)
+        }),
+        ("Timestamps & Users", {
+            "fields": ("creator", "updater", "date_added", "date_updated"),
+            "classes": ("collapse",)
+        }),
+    )
+
+
+# --------------------------------------------------
+# DAILY TASK
+# --------------------------------------------------
+@admin.register(DailyTask)
+class DailyTaskAdmin(admin.ModelAdmin):
+    list_display = ("task", "date", "is_completed", "is_deleted", "creator", "date_added")
+    list_filter = ("is_completed", "is_deleted", "date")
+    search_fields = ("task__title",)
+    list_editable = ("is_completed",)
+    date_hierarchy = "date"
+    ordering = ("-auto_id",)
+    readonly_fields = ("id", "auto_id", "slug", "creator", "updater", "date_added", "date_updated", "is_deleted")
+    fieldsets = (
+        ("Daily Task Info", {
+            "fields": ("task", "date", "is_completed")
         }),
         ("Metadata", {
             "fields": ("id", "auto_id", "slug", "is_deleted"),

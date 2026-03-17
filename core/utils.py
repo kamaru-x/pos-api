@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 from rest_framework import status
-
-from core.functions import generalize_errors
+from datetime import datetime
+from activity.models import Task, DailyTask
 
 def api_response(message="", status=status.HTTP_200_OK, data=None, serializer=None, general_errors=None):
 
@@ -43,3 +43,15 @@ def api_response(message="", status=status.HTTP_200_OK, data=None, serializer=No
         response["data"] = data
 
     return Response(response, status=status)
+
+
+def ensure_daily_tasks_created():
+    today = datetime.today()
+
+    # Check if already created today
+    if DailyTask.objects.filter(date=today).exists():
+        return
+
+    tasks = Task.objects.filter(is_deleted=False)
+    for task in tasks:
+        DailyTask.objects.get_or_create(task=task, date=today)

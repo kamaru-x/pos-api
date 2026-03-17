@@ -12,3 +12,8 @@ class JournalMoodChoices(models.TextChoices):
     NEUTRAL = 'neutral', _('Neutral')
     BAD = 'bad', _('Bad')
     TERRIBLE = 'terrible', _('Terribble')
+
+
+class TransactionTypeChoices(models.TextChoices):
+    INCOME = 'income', _('Income')
+    EXPENSE = 'expense', _('Expense')
