@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum
 from rest_framework.filters import OrderingFilter
 from core.utils import api_response
 from finance.models import BankAccount, TransactionCategory, Transaction, SelfTransfer
@@ -194,8 +195,8 @@ class TransactionListView(generics.ListCreateAPIView):
 
         stats = {
             "total": Transaction.active_objects.count(),
-            "total_income": Transaction.active_objects.filter(type="income").aggregate(total=models.Sum("amount"))["total"]  or 0,
-            "total_expense": Transaction.active_objects.filter(type="expense").aggregate(total=models.Sum("amount"))["total"] or 0,
+            "total_income": Transaction.active_objects.filter(type="income").aggregate(total=Sum("amount"))["total"]  or 0,
+            "total_expense": Transaction.active_objects.filter(type="expense").aggregate(total=Sum("amount"))["total"] or 0,
         }
 
         return api_response(
