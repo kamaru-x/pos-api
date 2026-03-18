@@ -39,7 +39,7 @@ class TransactionCategoryAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "auto_id", "slug", "creator", "updater", "date_added", "date_updated", "is_deleted")
     fieldsets = (
         ("Category Info", {
-            "fields": ("name",)
+            "fields": ("name", "type")
         }),
         ("Metadata", {
             "fields": ("id", "auto_id", "slug", "is_deleted"),
