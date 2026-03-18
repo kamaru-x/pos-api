@@ -23,7 +23,7 @@ class TransactionCategorySerializer(RepMixin, serializers.ModelSerializer):
     class Meta:
         model  = TransactionCategory
         fields = [
-            'id', 'slug', 'name', 'date_added', 'date_updated'
+            'id', 'slug', 'name', 'type', 'date_added', 'date_updated'
         ]
 
 
