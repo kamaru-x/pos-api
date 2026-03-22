@@ -2,6 +2,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from datetime import datetime
 from activity.models import Task, DailyTask
+from django.db import transaction as db_transaction
+from decimal import Decimal
+from finance.models import BankAccount, Transaction, SelfTransfer
+from django.db.models import Sum
 
 def api_response(message="", status=status.HTTP_200_OK, data=None, serializer=None, general_errors=None):
 
@@ -55,3 +59,16 @@ def ensure_daily_tasks_created():
     tasks = Task.objects.filter(is_deleted=False)
     for task in tasks:
         DailyTask.objects.get_or_create(task=task, date=today)
+
+
+def update_account_balance():
+    accounts = BankAccount.active_objects.all()
+
+    for account in accounts:
+        income       = Transaction.active_objects.filter(account=account, type="income" ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        expense      = Transaction.active_objects.filter(account=account, type="expense").aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        transfers_in = SelfTransfer.active_objects.filter(to_account=account  ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        transfers_out= SelfTransfer.active_objects.filter(from_account=account).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+        account.balance = income - expense + transfers_in - transfers_out
+        account.save()

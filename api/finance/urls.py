@@ -14,6 +14,7 @@ urlpatterns = [
     # TRANSACTION CATEGORY
     # --------------------------------------------------
     path('categories/', views.TransactionCategoryListView.as_view(), name='category-list'),
+    path('categories/overview/', views.TransactionCategoryOverviewView.as_view(), name='category-overview'),
     path('categories/<slug:slug>/', views.TransactionCategoryDetailView.as_view(), name='category-detail'),
 
     # --------------------------------------------------

@@ -2,11 +2,12 @@ from rest_framework import generics, status
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum
 from rest_framework.filters import OrderingFilter
-from core.utils import api_response
+from core.utils import api_response, update_account_balance
+from core.choices import TransactionTypeChoices
 from finance.models import BankAccount, TransactionCategory, Transaction, SelfTransfer
 from api.finance.serializers import BankAccountSerializer, TransactionCategorySerializer, TransactionSerializer, SelfTransferSerializer
 from api.finance.filters import BankAccountFilter, TransactionCategoryFilter, TransactionFilter, SelfTransferFilter
-
+from django.db import transaction as db_transaction
 
 # --------------------------------------------------
 # BANK ACCOUNT LIST & CREATE
@@ -177,6 +178,58 @@ class TransactionCategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
             status=status.HTTP_204_NO_CONTENT
         )
 
+# --------------------------------------------------
+# TRANSACTION CATEGORY OVERVIEW
+# --------------------------------------------------
+class TransactionCategoryOverviewView(generics.GenericAPIView):
+
+    def get(self, request, *args, **kwargs):
+        from django.db.models import Count, Sum
+
+        income_categories  = TransactionCategory.active_objects.filter(type=TransactionTypeChoices.INCOME)
+        expense_categories = TransactionCategory.active_objects.filter(type=TransactionTypeChoices.EXPENSE)
+
+        total_income  = Transaction.active_objects.filter(type=TransactionTypeChoices.INCOME).aggregate(total=Sum("amount"))["total"]  or 0
+        total_expense = Transaction.active_objects.filter(type=TransactionTypeChoices.EXPENSE).aggregate(total=Sum("amount"))["total"] or 0
+
+        def build_category_data(categories, total_amount):
+            result = []
+            for category in categories:
+                transactions = Transaction.active_objects.filter(category=category)
+                count        = transactions.count()
+                amount       = transactions.aggregate(total=Sum("amount"))["total"] or 0
+                percentage   = round((float(amount) / float(total_amount) * 100), 2) if total_amount > 0 else 0
+                result.append({
+                    "id":         str(category.id),
+                    "slug":       category.slug,
+                    "name":       category.name,
+                    "type":       { "id": category.type, "name": category.get_type_display() },
+                    "count":      count,
+                    "amount":     amount,
+                    "percentage": percentage,
+                })
+            return result
+
+        income_data  = build_category_data(income_categories,  total_income)
+        expense_data = build_category_data(expense_categories, total_expense)
+
+        return api_response(
+            message="Category overview retrieved successfully",
+            data={
+                "income": {
+                    "categories":  income_data,
+                    "total":       total_income,
+                    "total_count": Transaction.active_objects.filter(type="income").count(),
+                },
+                "expense": {
+                    "categories":  expense_data,
+                    "total":       total_expense,
+                    "total_count": Transaction.active_objects.filter(type="expense").count(),
+                },
+            },
+            status=status.HTTP_200_OK
+        )
+
 
 # --------------------------------------------------
 # TRANSACTION LIST & CREATE
@@ -193,10 +246,14 @@ class TransactionListView(generics.ListCreateAPIView):
         queryset = self.filter_queryset(self.get_queryset())
         data = self.get_serializer(queryset, many=True).data
 
+        total_income = Transaction.active_objects.filter(type="income").aggregate(total=Sum("amount"))["total"]  or 0
+        total_expense = Transaction.active_objects.filter(type="expense").aggregate(total=Sum("amount"))["total"] or 0
+
         stats = {
             "total": Transaction.active_objects.count(),
-            "total_income": Transaction.active_objects.filter(type="income").aggregate(total=Sum("amount"))["total"]  or 0,
-            "total_expense": Transaction.active_objects.filter(type="expense").aggregate(total=Sum("amount"))["total"] or 0,
+            "total_income": total_income,
+            "total_expense": total_expense,
+            "total_balance": total_income - total_expense
         }
 
         return api_response(
@@ -208,7 +265,9 @@ class TransactionListView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            with db_transaction.atomic():
+                serializer.save()
+                update_account_balance()
             return api_response(
                 message="Transaction created successfully",
                 data=serializer.data,
@@ -244,7 +303,9 @@ class TransactionDetailView(generics.RetrieveUpdateDestroyAPIView):
             partial=kwargs.get("partial", False)
         )
         if serializer.is_valid():
-            serializer.save()
+            with db_transaction.atomic():
+                serializer.save()
+                update_account_balance()
             return api_response(
                 message="Transaction updated successfully",
                 data=serializer.data,
@@ -258,7 +319,9 @@ class TransactionDetailView(generics.RetrieveUpdateDestroyAPIView):
             )
 
     def destroy(self, request, *args, **kwargs):
-        self.get_object().delete()
+        with db_transaction.atomic():
+            self.get_object().delete()
+            update_account_balance()
         return api_response(
             message="Transaction deleted successfully",
             status=status.HTTP_204_NO_CONTENT
@@ -293,7 +356,9 @@ class SelfTransferListView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            with db_transaction.atomic():
+                serializer.save()
+                update_account_balance()
             return api_response(
                 message="Self transfer created successfully",
                 data=serializer.data,
@@ -329,7 +394,9 @@ class SelfTransferDetailView(generics.RetrieveUpdateDestroyAPIView):
             partial=kwargs.get("partial", False)
         )
         if serializer.is_valid():
-            serializer.save()
+            with db_transaction.atomic():
+                serializer.save()
+                update_account_balance()
             return api_response(
                 message="Self transfer updated successfully",
                 data=serializer.data,
@@ -343,7 +410,9 @@ class SelfTransferDetailView(generics.RetrieveUpdateDestroyAPIView):
             )
 
     def destroy(self, request, *args, **kwargs):
-        self.get_object().delete()
+        with db_transaction.atomic():
+            self.get_object().delete()
+            update_account_balance()
         return api_response(
             message="Self transfer deleted successfully",
             status=status.HTTP_204_NO_CONTENT

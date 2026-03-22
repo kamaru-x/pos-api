@@ -14,6 +14,10 @@ class BankAccountSerializer(RepMixin, serializers.ModelSerializer):
             'id', 'slug', 'name', 'bank_name', 'account_number', 'balance', 'note', 'date_added', 'date_updated'
         ]
 
+        read_only_fields = [
+            'balance'
+        ]
+
 
 # --------------------------------------------------
 # TRANSACTION CATEGORY SERIALIZER
